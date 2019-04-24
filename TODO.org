@@ -420,7 +420,10 @@ insert_window_left()  deletes some left-most windows
 ** improve dired (file commands, nicer display)
 *** t -> dired-touch
 *** | -> dired-shell-command
-*** D -> dired-mkdir
+*** DONE D -> dired-mkdir
+    CLOSED: [2019-04-22 Mon 20:55]
+    - CLOSING NOTE [2019-04-22 Mon 20:55] \\
+      errno currently not checked
 ** make archive mode use dired commands
 
 * Modes

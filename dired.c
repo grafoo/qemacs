@@ -1300,6 +1300,30 @@ void do_dired(EditState *s, int argval)
     qs->active_window = e;
 }
 
+static void dired_mkdir(EditState *edit_state, const char *dirname)
+{
+    DiredState *dired_state;
+    if (!(dired_state = dired_get_state(edit_state, 0))) {
+        return;
+    }
+
+    size_t cwd_len = strlen(dired_state->path);
+    size_t dirname_len = strlen(dirname);
+    size_t pathname_len = cwd_len + dirname_len + 1;
+    char pathname[pathname_len];
+
+    pstrncpy(pathname, pathname_len, dired_state->path, cwd_len);
+    strncat(pathname, "/", 1);
+    strncat(pathname, dirname, dirname_len);
+
+    if (mkdir(pathname, 0755) != 0) {
+        put_status(edit_state, "make %s failed", pathname);
+        return;
+    }
+
+    dired_refresh(edit_state);
+}
+
 /* specific dired commands */
 static CmdDef dired_commands[] = {
     CMD0( KEY_RET, KEY_RIGHT,
@@ -1354,6 +1378,9 @@ static CmdDef dired_commands[] = {
           "dired-toggle-human", dired_toggle_human)
     CMD0( 'N', KEY_NONE,
           "dired-toggle-nflag", dired_toggle_nflag)
+    CMD2( 'D', KEY_NONE,
+          "dired-mkdir", dired_mkdir,
+          ESs, "s{Directory name: }|dirname|")
     CMD_DEF_END,
 };
 
