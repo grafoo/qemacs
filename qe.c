@@ -9038,14 +9038,6 @@ static void qe_init(void *opaque)
     /* handle options */
     _optind = parse_command_line(argc, argv);
 
-    /* load config file unless command line option given */
-    if (!no_init_file) {
-        do_load_config_file(s, NULL);
-        s = qs->active_window;
-    }
-
-    qe_key_init(&key_ctx);
-
     /* select the suitable display manager */
     for (;;) {
         dpy = probe_display();
@@ -9065,6 +9057,14 @@ static void qe_init(void *opaque)
 
     put_status(NULL, "%s display %dx%d",
                dpy->name, qs->screen->width, qs->screen->height);
+
+    /* load config file unless command line option given */
+    if (!no_init_file) {
+        do_load_config_file(s, NULL);
+        s = qs->active_window;
+    }
+
+    qe_key_init(&key_ctx);
 
     qe_event_init();
 
