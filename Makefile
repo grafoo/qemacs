@@ -247,7 +247,7 @@ qe$(EXE): qe_g$(EXE) Makefile
 #
 xqe_g$(EXE): $(XOBJS) $(DEP_LIBS)
 	$(echo) LD $@
-	$(cmd)  $(CC) $(XLDFLAGS) -o $@ $^ $(XLIBS)
+	$(cmd)  $(CC) $(XLDFLAGS) -o $@ $^ $(XLIBS) $(LIBS)
 
 xqe$(EXE): xqe_g$(EXE) Makefile
 	@rm -f $@
