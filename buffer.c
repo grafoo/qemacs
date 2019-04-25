@@ -2518,6 +2518,21 @@ int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
     return offset;
 }
 
+int eb_goto_indentation(EditBuffer *b, int offset)
+{
+    int offset1, c;
+
+    for (;;) {
+        c = eb_prevc(b, offset, &offset1);
+        if (eb_is_in_indentation(b, offset) || c == '\n') {
+            break;
+        }
+        offset = offset1;
+    }
+
+    return offset;
+}
+
 /* test for blank line starting at <offset>.
  * return 0 if not blank.
  * return 1 if blank and store start of next line in <*offset1>.
@@ -2532,6 +2547,31 @@ int eb_is_blank_line(EditBuffer *b, int offset, int *offset1)
     }
     if (offset1)
         *offset1 = offset;
+    return 1;
+}
+
+/* like eb_is_blank_line but also looks back to bol. */
+int eb_is_blank_line1(EditBuffer *b, int offset, int *offset1)
+{
+    int c, start_point = offset;
+
+    while ((c = eb_nextc(b, offset, &offset)) != '\n') {
+        if (!qe_isblank(c)) {
+            return 0;
+        }
+    }
+
+    offset = start_point;
+    while ((c = eb_prevc(b, offset, &offset)) != '\n') {
+        if (!qe_isblank(c)) {
+            return 0;
+        }
+    }
+
+    if (offset1) {
+        *offset1 = offset;
+    }
+
     return 1;
 }
 

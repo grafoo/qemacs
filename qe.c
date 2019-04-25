@@ -152,6 +152,9 @@ void qe_register_mode(ModeDef *m, int flags)
             m->move_left_right = text_move_left_right_visual;
         if (!m->move_bol)
             m->move_bol = text_move_bol;
+        if (!m->move_back_to_indentation) {
+            m->move_back_to_indentation = text_move_back_to_indentation;
+        }
         if (!m->move_eol)
             m->move_eol = text_move_eol;
         if (!m->move_bof)
@@ -557,6 +560,16 @@ void do_bol(EditState *s)
         s->mode->move_bol(s);
 }
 
+/* Move point to the first non-whitespace character on the current line. */
+void do_back_to_indentation(EditState *s)
+{
+    if (s->mode->move_back_to_indentation &&
+        !eb_is_blank_line1(s->b, s->offset, NULL))
+    {
+        s->mode->move_back_to_indentation(s);
+    }
+}
+
 void do_eol(EditState *s)
 {
     if (s->mode->move_eol)
@@ -582,6 +595,11 @@ void text_move_eof(EditState *s)
 void text_move_bol(EditState *s)
 {
     s->offset = eb_goto_bol(s->b, s->offset);
+}
+
+void text_move_back_to_indentation(EditState *s)
+{
+    s->offset = eb_goto_indentation(s->b, s->offset);
 }
 
 void text_move_eol(EditState *s)
@@ -8493,6 +8511,7 @@ ModeDef text_mode = {
     .move_up_down = text_move_up_down,
     .move_left_right = text_move_left_right_visual,
     .move_bol = text_move_bol,
+    .move_back_to_indentation = text_move_back_to_indentation,
     .move_eol = text_move_eol,
     .move_bof = text_move_bof,
     .move_eof = text_move_eof,

@@ -88,6 +88,8 @@ static CmdDef basic_commands[] = {
           "scroll-up-one", do_scroll_up_down, 1 ) /* u? */
     CMD0( KEY_CTRL('a'), KEY_HOME,
           "beginning-of-line", do_bol)
+    CMD0( KEY_META('i'), KEY_NONE,
+          "back-to-indentation", do_back_to_indentation)
     CMD0( KEY_CTRL('e'), KEY_END,
           "end-of-line", do_eol)
     CMD0( KEY_META('<'), KEY_CTRL_HOME,
