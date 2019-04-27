@@ -1563,6 +1563,7 @@ struct ModeDef {
     /* Functions to insert and delete contents: */
     void (*write_char)(EditState *s, int c);
     void (*delete_bytes)(EditState *s, int offset, int size);
+    void (*comment_dwim_func)(EditState *s);
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
@@ -2210,6 +2211,7 @@ void do_toggle_truncate_lines(EditState *s);
 void do_word_wrap(EditState *s);
 void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
+void do_comment_dwim(EditState *s);
 void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);
@@ -2372,3 +2374,8 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
 #define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 
 #endif
+
+typedef struct comment_region {
+    int begin;
+    int end;
+} comment_region;

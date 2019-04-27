@@ -1250,6 +1250,156 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
+void c_comment_uncomment_line(EditState *s, int uncomment, int match_begin_offset, int match_end_offset)
+{
+    if (uncomment) {
+        /* delete space and comment end characters */
+        if (eb_match_uchar(s->b, match_end_offset - 3, ' ', NULL)) {
+            eb_delete_chars(s->b, match_end_offset - 3, 3);
+        } else {
+            eb_delete_chars(s->b, match_end_offset - 2, 2);
+        }
+
+        /* delete space and comment begin characters */
+        if (eb_match_uchar(s->b, match_begin_offset, ' ', NULL)) {
+            eb_delete_chars(s->b, match_begin_offset - 2, 3);
+        } else {
+            eb_delete_chars(s->b, match_begin_offset - 2, 2);
+        }
+
+        /* find escaped comments and enable them */
+        int match_escape_begin_offset = -1, match_escape_end_offset = -1, point;
+        for (point = eb_goto_bol(s->b, s->offset); point <= eb_goto_eol(s->b, s->offset); point++) {
+            eb_match_str(s->b, point, "/\\*", &match_escape_begin_offset);
+            eb_match_str(s->b, point, "*\\/", &match_escape_end_offset);
+        }
+
+        if (match_escape_end_offset != -1) {
+            eb_delete_uchar(s->b, match_escape_end_offset - 2);
+        }
+
+        if (match_escape_begin_offset != -1) {
+            eb_delete_uchar(s->b, match_escape_begin_offset - 2);
+        }
+    } else {
+        /* skip line when blank */
+        if (eb_is_blank_line1(s->b, s->offset, NULL)) {
+            return;
+        }
+
+        /* insert comment begin characters at bol */
+        s->offset = eb_goto_indentation(s->b, s->offset);
+        eb_insert_str(s->b, s->offset, "/* ");
+
+        /* insert comment end characters at eol */
+        s->offset = eb_goto_eol(s->b, s->offset);
+        eb_insert_str(s->b, s->offset, " */");
+    }
+}
+
+/* TODO: handle region with s->b->mark > s->offset */
+/* TODO: start comment on indentation */
+/* TODO: handle (single) continuous multi line comments */
+/* TODO: handle multiple comments on same line */
+void c_comment_dwim_region(EditState *s)
+{
+    int region_begin = s->b->mark, region_end = s->offset, region_last_line, region_current_line, _;
+
+    eb_get_pos(s->b, &region_current_line, &_, region_begin);
+    eb_get_pos(s->b, &region_last_line, &_, region_end);
+    s->offset = region_begin;
+    int region_lines_total = abs(region_current_line - region_last_line) + 1;
+    comment_region cr[region_lines_total];
+
+    int line_i = 0;
+    int uniform = 1;
+    int found_code_line = 0;
+    int found_comment_line = 0;
+    for (; line_i < region_lines_total; line_i++) {
+        int match_begin_offset = -1, match_end_offset = -1, point_i;
+        for (point_i = eb_goto_bol(s->b, s->offset); point_i <= eb_goto_eol(s->b, s->offset); point_i++) {
+            eb_match_str(s->b, point_i, "/*", &match_begin_offset);
+            eb_match_str(s->b, point_i, "*/", &match_end_offset);
+        }
+        cr[line_i].begin = match_begin_offset;
+        cr[line_i].end = match_end_offset;
+
+        if (!eb_is_blank_line1(s->b, s->offset, NULL)) {
+            if (match_begin_offset == -1 && match_end_offset == -1) {
+                found_code_line = 1;
+            } else if (match_begin_offset != -1 && match_end_offset != -1) {
+                found_comment_line = 1;
+            }
+        }
+
+        s->offset = eb_next_line(s->b, s->offset);
+    }
+
+    if (found_code_line && found_comment_line) {
+        uniform = 0;
+    }
+
+    if (region_lines_total == 1) {
+        uniform = 1;
+    }
+
+    s->offset = region_end;
+    if (uniform) {
+        for (line_i = region_lines_total - 1; line_i >= 0; line_i--) {
+            if (cr[line_i].begin == -1 && cr[line_i].end == -1) {
+                /* comment line */
+                c_comment_uncomment_line(s, 0, 0, 0);
+            } else {
+                /* uncomment line */
+                c_comment_uncomment_line(s, 1, cr[line_i].begin, cr[line_i].end);
+            }
+
+            s->offset = eb_prev_line(s->b, s->offset);
+        }
+    } else {
+        for (line_i = region_lines_total - 1; line_i >= 0; line_i--) {
+            if (cr[line_i].begin == -1 && cr[line_i].end == -1) {
+                c_comment_uncomment_line(s, 0, 0, 0);
+            } else {
+                eb_insert_uchar(s->b, cr[line_i].end - 1, '\\');
+                eb_insert_uchar(s->b, cr[line_i].begin - 1, '\\');
+                c_comment_uncomment_line(s, 0, 0, 0);
+            }
+            s->offset = eb_prev_line(s->b, s->offset);
+        }
+    }
+
+    do_break(s);
+}
+
+/* The behaviour of this function in respect to a active region
+   (EditState.region_style when EditState.qe_state.hilite_region is enabled) is
+   derived from transient-mark-mode in GNU Emacs. */
+void c_comment_dwim(EditState *s)
+{
+    if (s->region_style) {
+        /* comment/uncomment lines in region */
+        c_comment_dwim_region(s);
+    } else {
+        /* add comment at eol */
+        do_eol(s);
+
+        if (eb_is_blank_line1(s->b, s->offset, NULL)) {
+            s->mode->indent_func(s, s->offset);
+        } else {
+            do_char(s, 0x20, 1);
+        }
+
+        eb_insert_str(s->b, s->offset, "/*  */");
+
+        /* set point to center of comment */
+        int i = 0;
+        for (; i < 3; i++) {
+            do_left_right(s, 1);
+        }
+    }
+}
+
 ModeDef c_mode = {
     .name = "C",
     .extensions = c_extensions,
@@ -1261,6 +1411,7 @@ ModeDef c_mode = {
     .types = c_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .comment_dwim_func = c_comment_dwim,
 };
 
 /* XXX: support Yacc / Bison syntax extensions */

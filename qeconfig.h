@@ -358,6 +358,8 @@ static CmdDef basic_commands[] = {
           "count-lines", do_count_lines)
     CMD0( KEY_CTRLX('='), KEY_NONE,
           "what-cursor-position", do_what_cursor_position)
+    CMD0( KEY_META(';'), KEY_NONE,
+          "comment-dwim", do_comment_dwim)
 
     /* non standard mappings */
     CMD0( KEY_CTRLXRET('l'), KEY_CTRLC('l'),

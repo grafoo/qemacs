@@ -2724,6 +2724,16 @@ void do_what_cursor_position(EditState *s)
                abs(s->offset - s->b->mark), col_num);
 }
 
+/* This resembles features of comment-dwim in GNU Emacs.
+   With a region selected, each line will be commented/uncommented.
+   Without a active region, a comment will be added to eol and point will be set to the comments center. */
+void do_comment_dwim(EditState *s)
+{
+    if (s->mode->comment_dwim_func) {
+        s->mode->comment_dwim_func(s);
+    }
+}
+
 void do_set_tab_width(EditState *s, int tab_width)
 {
     if (tab_width > 1)
