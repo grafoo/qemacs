@@ -1491,6 +1491,10 @@ ModeDef cpp_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+    .comment_dwim_func = line_comment_dwim,
+    .block_comment_delimiter_begin = "/*",
+    .block_comment_delimiter_end = "*/",
+    .line_comment_delimiter = "//",
 };
 
 /*---------------- C2 language ----------------*/

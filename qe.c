@@ -2724,6 +2724,69 @@ void do_what_cursor_position(EditState *s)
                abs(s->offset - s->b->mark), col_num);
 }
 
+void comment_dwim_region(EditState *s, char const *block_comment_delimiter_begin, char const *block_comment_delimiter_end)
+{
+}
+
+void comment_dwim(EditState *s, char const *comment_delimiter_begin, char const *comment_delimiter_end)
+{
+    do_eol(s);
+
+    if (eb_is_blank_line1(s->b, s->offset, NULL)) {
+        if (s->mode->indent_func) {
+            s->mode->indent_func(s, s->offset);
+        }
+    } else {
+        do_char(s, 0x20, 1);
+    }
+
+    if (comment_delimiter_end) {
+        /* insert block comment */
+
+        /* insert comment string */
+        eb_insert_str(s->b, s->offset, comment_delimiter_end);
+        eb_insert_spaces(s->b, s->offset, 2);
+        eb_insert_str(s->b, s->offset, comment_delimiter_begin);
+
+        /* set point to center of comment */
+        for (size_t i = 0; i < strlen(comment_delimiter_end) + 1; i++) {
+            do_left_right(s, 1);
+        }
+    } else {
+        /* insert line comment */
+
+        eb_insert_spaces(s->b, s->offset, 1);
+        eb_insert_str(s->b, s->offset, comment_delimiter_begin);
+        do_eol(s);
+    }
+}
+
+void block_comment_dwim(EditState *s)
+{
+    if (s->mode->block_comment_delimiter_begin && s->mode->block_comment_delimiter_end) {
+        if (s->region_style) {
+            /* comment/uncomment lines in region */
+            comment_dwim_region(s, s->mode->block_comment_delimiter_begin, s->mode->block_comment_delimiter_end);
+        } else {
+            /* add comment at eol */
+            comment_dwim(s, s->mode->block_comment_delimiter_begin, s->mode->block_comment_delimiter_end);
+        }
+    }
+}
+
+void line_comment_dwim(EditState *s)
+{
+    if (s->mode->line_comment_delimiter) {
+        if (s->region_style) {
+            /* comment/uncomment lines in region */
+            comment_dwim_region(s, s->mode->line_comment_delimiter, NULL);
+        } else {
+            /* add comment at eol */
+            comment_dwim(s, s->mode->line_comment_delimiter, NULL);
+        }
+    }
+}
+
 /* This resembles features of comment-dwim in GNU Emacs.
    With a region selected, each line will be commented/uncommented.
    Without a active region, a comment will be added to eol and point will be set to the comments center. */

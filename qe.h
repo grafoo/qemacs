@@ -1514,6 +1514,9 @@ struct ModeDef {
     const char *shell_handlers;
     const char *keywords;
     const char *types;
+    char const *block_comment_delimiter_begin;
+    char const *block_comment_delimiter_end;
+    char const *line_comment_delimiter;
 
     int flags;
 #define MODEF_NOCMD        0x8000 /* do not register xxx-mode command automatically */
@@ -2212,6 +2215,8 @@ void do_word_wrap(EditState *s);
 void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
 void do_comment_dwim(EditState *s);
+void line_comment_dwim(EditState *s);
+void block_comment_dwim(EditState *s);
 void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);

@@ -4036,6 +4036,9 @@ static ModeDef ocaml_mode = {
     .keywords = ocaml_keywords,
     .types = ocaml_types,
     .colorize_func = ocaml_colorize_line,
+    .comment_dwim_func = block_comment_dwim,
+    .block_comment_delimiter_begin = "(*",
+    .block_comment_delimiter_end = "*)",
 };
 
 static int ocaml_init(void)

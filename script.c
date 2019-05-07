@@ -297,6 +297,8 @@ static ModeDef sh_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static ModeDef bash_mode = {
@@ -306,6 +308,8 @@ static ModeDef bash_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static ModeDef csh_mode = {
@@ -315,6 +319,8 @@ static ModeDef csh_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static ModeDef ksh_mode = {
@@ -324,6 +330,8 @@ static ModeDef ksh_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static ModeDef zsh_mode = {
@@ -333,6 +341,8 @@ static ModeDef zsh_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static ModeDef tcsh_mode = {
@@ -342,6 +352,8 @@ static ModeDef tcsh_mode = {
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
+    .comment_dwim_func = line_comment_dwim,
+    .line_comment_delimiter = "#",
 };
 
 static int shell_script_init(void)
