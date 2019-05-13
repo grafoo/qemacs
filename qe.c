@@ -2724,8 +2724,144 @@ void do_what_cursor_position(EditState *s)
                abs(s->offset - s->b->mark), col_num);
 }
 
-void comment_dwim_region(EditState *s, char const *block_comment_delimiter_begin, char const *block_comment_delimiter_end)
+const char *escape_block_comment_delimiter(const char *delimiter)
 {
+    int len = strlen(delimiter);
+    if (len > 1) {
+        char escaped_delimiter[len + 2];
+        bzero(escaped_delimiter, len + 2);
+        escaped_delimiter[0] = delimiter[0];
+        escaped_delimiter[1] = '\\';
+        pstrcat(&escaped_delimiter[2], len + 2, &delimiter[1]);
+        return strdup(escaped_delimiter);
+    } else {
+        return delimiter;
+    }
+}
+
+void comment_uncomment_line(EditState *s, int uncomment, int match_begin_offset, int match_end_offset)
+{
+    if (uncomment) {
+        const char *escaped_comment_delimiter_begin = escape_block_comment_delimiter(s->mode->block_comment_delimiter_begin);
+        const char *escaped_comment_delimiter_end = escape_block_comment_delimiter(s->mode->block_comment_delimiter_end);
+        /* delete space and comment end characters */
+        if (eb_match_uchar(s->b, match_end_offset - strlen(s->mode->block_comment_delimiter_end) + 1, ' ', NULL)) {
+            eb_delete_chars(s->b, match_end_offset - strlen(s->mode->block_comment_delimiter_end) + 1, strlen(s->mode->block_comment_delimiter_end) + 1);
+        } else {
+            eb_delete_chars(s->b, match_end_offset - strlen(s->mode->block_comment_delimiter_end), strlen(s->mode->block_comment_delimiter_end));
+        }
+
+        /* delete space and comment begin characters */
+        if (eb_match_uchar(s->b, match_begin_offset, ' ', NULL)) {
+            eb_delete_chars(s->b, match_begin_offset - strlen(s->mode->block_comment_delimiter_begin), strlen(s->mode->block_comment_delimiter_begin) + 1);
+        } else {
+            eb_delete_chars(s->b, match_begin_offset - strlen(s->mode->block_comment_delimiter_begin), strlen(s->mode->block_comment_delimiter_begin));
+        }
+
+        /* find escaped comments and enable them */
+        int match_escape_begin_offset = -1, match_escape_end_offset = -1, point;
+        for (point = eb_goto_bol(s->b, s->offset); point <= eb_goto_eol(s->b, s->offset); point++) {
+            eb_match_str(s->b, point, escaped_comment_delimiter_begin, &match_escape_begin_offset);
+            eb_match_str(s->b, point, escaped_comment_delimiter_end, &match_escape_end_offset);
+        }
+
+        if (match_escape_end_offset != -1) {
+            eb_delete_uchar(s->b, match_escape_end_offset - strlen(s->mode->block_comment_delimiter_end));
+        }
+
+        if (match_escape_begin_offset != -1) {
+            eb_delete_uchar(s->b, match_escape_begin_offset - strlen(s->mode->block_comment_delimiter_begin));
+        }
+    } else {
+        /* skip line when blank */
+        if (eb_is_blank_line1(s->b, s->offset, NULL)) {
+            return;
+        }
+
+        /* insert comment end characters at eol */
+        s->offset = eb_goto_eol(s->b, s->offset);
+        eb_insert_str(s->b, s->offset, s->mode->block_comment_delimiter_end);
+        eb_insert_uchar(s->b, s->offset, ' ');
+
+        /* insert comment begin characters at bol */
+        s->offset = eb_goto_indentation(s->b, s->offset);
+
+        eb_insert_uchar(s->b, s->offset, ' ');
+        eb_insert_str(s->b, s->offset, s->mode->block_comment_delimiter_begin);
+    }
+}
+
+void comment_dwim_region(EditState *s, char const *comment_delimiter_begin, char const *comment_delimiter_end)
+{
+    if (comment_delimiter_end) {
+        int region_begin = s->b->mark, region_end = s->offset, region_last_line, region_current_line, _;
+
+        eb_get_pos(s->b, &region_current_line, &_, region_begin);
+        eb_get_pos(s->b, &region_last_line, &_, region_end);
+        s->offset = region_begin;
+        int region_lines_total = abs(region_current_line - region_last_line) + 1;
+        comment_region cr[region_lines_total];
+
+        int line_i = 0;
+        int uniform = 1;
+        int found_code_line = 0;
+        int found_comment_line = 0;
+        for (; line_i < region_lines_total; line_i++) {
+            int match_begin_offset = -1, match_end_offset = -1, point_i;
+            for (point_i = eb_goto_bol(s->b, s->offset); point_i <= eb_goto_eol(s->b, s->offset); point_i++) {
+                eb_match_str(s->b, point_i, comment_delimiter_begin, &match_begin_offset);
+                eb_match_str(s->b, point_i, comment_delimiter_end, &match_end_offset);
+            }
+            cr[line_i].begin = match_begin_offset;
+            cr[line_i].end = match_end_offset;
+
+            if (!eb_is_blank_line1(s->b, s->offset, NULL)) {
+                if (match_begin_offset == -1 && match_end_offset == -1) {
+                    found_code_line = 1;
+                } else if (match_begin_offset != -1 && match_end_offset != -1) {
+                    found_comment_line = 1;
+                }
+            }
+
+            s->offset = eb_next_line(s->b, s->offset);
+        }
+
+        if (found_code_line && found_comment_line) {
+            uniform = 0;
+        }
+
+        if (region_lines_total == 1) {
+            uniform = 1;
+        }
+
+        s->offset = region_end;
+        if (uniform) {
+            for (line_i = region_lines_total - 1; line_i >= 0; line_i--) {
+                if (cr[line_i].begin == -1 && cr[line_i].end == -1) {
+                    /* comment line */
+                    comment_uncomment_line(s, 0, 0, 0);
+                } else {
+                    /* uncomment line */
+                    comment_uncomment_line(s, 1, cr[line_i].begin, cr[line_i].end);
+                }
+
+                s->offset = eb_prev_line(s->b, s->offset);
+            }
+        } else {
+            for (line_i = region_lines_total - 1; line_i >= 0; line_i--) {
+                if (cr[line_i].begin == -1 && cr[line_i].end == -1) {
+                    comment_uncomment_line(s, 0, 0, 0);
+                } else {
+                    eb_insert_uchar(s->b, cr[line_i].end - 1, '\\');
+                    eb_insert_uchar(s->b, cr[line_i].begin - 1, '\\');
+                    comment_uncomment_line(s, 0, 0, 0);
+                }
+                s->offset = eb_prev_line(s->b, s->offset);
+            }
+        }
+    }
+
+    do_break(s);
 }
 
 void comment_dwim(EditState *s, char const *comment_delimiter_begin, char const *comment_delimiter_end)

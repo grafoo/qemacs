@@ -2384,3 +2384,5 @@ typedef struct comment_region {
     int begin;
     int end;
 } comment_region;
+
+void c_comment_uncomment_line(EditState *s, int uncomment, int match_begin_offset, int match_end_offset);
